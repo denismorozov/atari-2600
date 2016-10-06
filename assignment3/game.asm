@@ -15,6 +15,8 @@ YPos2 = $82
 VisiblePlayerLine2 = $83
 PlayerBuffer1 = $84
 PlayerBuffer2 = $85
+Player1CanMove = $86
+Player2CanMove = $87
 
 Start
   sei ; disable interrupts
@@ -29,16 +31,29 @@ ClearMem
   dex
   bne ClearMem
 
+  ; init stuff
   lda #$00
   sta COLUBK ; set background color
-  lda #33
+  lda #99
   sta COLUP0 ; set p0 color
-  lda #$72
+  lda #11
   sta COLUP1
+
   lda #80
   sta YPos1
   lda #82
   sta YPos2
+  lda #%1
+  sta Player1CanMove
+  sta Player2CanMove
+
+  ;;load vertical line
+  LDA #2
+  STA ENAM1  ;enable it
+  LDA #$20  
+  STA NUSIZ1 ;make it quadwidth (not so thin, that)  
+  LDA #$F0  ; -1 in the left nibble
+  STA HMM1  ; of HMM1 sets it to moving
 
 MainLoop
   lda  #2
@@ -56,6 +71,9 @@ MainLoop
   sta  VSYNC
   
   ldx #0 ; init movement speed
+  lda Player1CanMove
+  beq SkipPlayer1Movement
+
   ; left?
   lda #%01000000
   bit SWCHA
@@ -85,9 +103,11 @@ SkipMoveDown
   bne SkipMoveUp
   dec YPos1
 SkipMoveUp
-
   stx HMP0
   ;stx HMM0
+SkipPlayer1Movement
+  lda Player2CanMove
+  beq SkipPlayer2Movement
 
   lda #%00000001
   bit SWCHA
@@ -118,15 +138,34 @@ SkipMoveLeft2
   sta REFP1
 SkipMoveRight2
   stx HMP1
+SkipPlayer2Movement
+  ;lda Player1CanMove
+  ;beq ClearMem ; both players died, restart
 
   lda #%10000000
-  bit CXPPMM
+  bit CXM1P
+
+  beq P2CollisionCheck
+
+  lda #0
+  sta HMM1
+  sta Player1CanMove
+  sta HMP0
+
+P2CollisionCheck
+  lda #%01000000
+  bit CXM1P
+
   beq NoCollision
-  lda YPos1
-  sta COLUBK
+
+  lda #0
+  sta HMM1
+  sta Player2CanMove
+  sta HMP1
 
 NoCollision
-  sta CXCLR
+; bit CXPPMM player to player collision
+  sta CXCLR ; reset collision detection
   
   lda #0
   sta PlayerBuffer1
